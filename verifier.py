@@ -4,10 +4,12 @@ import torch.nn as nn
 
 from transformer import FeedForwardTransformer
 
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Verifier(nn.Module):
     def __init__(self, input_frame_size=40, hidden_size=256, fingerprint_size=256):
+        super(Verifier, self).__init__()
         self.num_blocks = 3
         self.num_speakers = 64
         self.num_utterances_per_speaker = 10
@@ -39,8 +41,10 @@ class Verifier(nn.Module):
         nu = self.num_utterances_per_speaker
 
         new_view = batch.view(ns, nu, -1) # (64 x 10 x 256)
-        centroids = new_view.mean(dim=1) # (64 x 256)
-        centroids_minus_i = (new_view.sum(dim=1, keepdim=True) - new_view) / (nu - 1) # (640 x 256)
+        speaker_sums = new_view.sum(dim=1, keepdim=True) # (64 x 1 x 256)
+        centroids = (speaker_sums / nu).squeeze().norm(dim=1).to(device) # (64 x 256)
+        centroids_minus_i = ((speaker_sums - new_view) / (nu - 1)).norm(dim=1).to(device) # (640 x 256)
+        batch = batch.norm(dim=1).to(device)
 
         similarity_matrix = torch.bmm(batch, centroids.t()) # (640 x 64)
         for j in range(ns):
@@ -59,6 +63,8 @@ class Verifier(nn.Module):
         similarity_matrix = self.get_similarity_matrix(batch)
         target = torch.arange(ns).repeat_interleave(nu).to(device)
         loss = self.loss_function(similarity_matrix, target)
+
+        return loss
 
     def get_embedding(self, spectrogram):
         """
