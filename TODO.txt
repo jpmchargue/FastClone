@@ -1,0 +1,1 @@
+- figure out how/when to normalize embedding vectors in similarity matrix calculation
