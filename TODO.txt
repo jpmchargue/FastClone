@@ -1,4 +1,1 @@
-- figure out how the raw phoneme id sequence can just be passed as an input to encoder
-	- some kind of hidden one hot encoding??
-- figure out how the masks work
 - finish transformer-based verifier

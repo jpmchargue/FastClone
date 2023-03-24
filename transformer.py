@@ -20,9 +20,9 @@ class FFTMultiHeadSelfAttention(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.layernorm = nn.LayerNorm(d_model)
 
-
     def forward(self, batch, mask=None):
         # batch is initially (batch size x sequence length x d_model)
+        # mask is initially (batch size x sequence length)
         # I implement Scaled Dot-Product Attention per Attention is All You Need (https://arxiv.org/abs/1706.03762)
         # as softmax((QK^T)/sqrt(d_model))V.
         batch_size, sequence_length, _ = batch.shape
@@ -45,7 +45,8 @@ class FFTMultiHeadSelfAttention(nn.Module):
         # Compute attention
         attention_weights = torch.bmm(q, k.t()) / np.sqrt(self.d_model)
         if mask is not None:
-            attention_weights.masked_fill(mask, np.NINF)
+            attention_mask = mask.unsqueeze(1).repeat(self.num_heads, sequence_length, 1)
+            attention_weights.masked_fill(attention_mask, np.NINF)
         attention_softmax = self.softmax(attention_weights)
         attention = torch.bmm(attention_softmax, v)
 
@@ -61,7 +62,7 @@ class FFTMultiHeadSelfAttention(nn.Module):
 
 class FFTConvolution(nn.Module):
     def __init__(self, d_model, d_hidden, kernel_size):
-        self.layer1 = nn.Conv1d(d_model, d_hidden, kernel_size=kernel_size, padding=(kernel_size[0] - 1) // 2)
+        self.layer1 = nn.Conv1d(d_model, d_hidden, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         self.layer2 = nn.Conv1d(d_hidden, d_model, kernel_size=1, padding=0)
 
         self.dropout = nn.Dropout(0.1)
@@ -81,4 +82,13 @@ class FeedForwardTransformer(nn.Module):
         self.multihead_attention = FFTMultiHeadSelfAttention(num_heads, d_model)
         self.convolution = FFTConvolution(d_model, conv_d_hidden, kernel_size)
 
+    def forward(self, batch, mask):
+        past_end_of_sequence_mask = mask.unsqueeze(-1)
+        
+        sequence = self.multihead_attention(batch, mask=mask)
+        sequence.masked_fill(past_end_of_sequence_mask, 0)
+        sequence = self.convolution(sequence)
+        sequence.masked_fill(past_end_of_sequence_mask, 0)
+
+        return sequence
     
