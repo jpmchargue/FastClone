@@ -1,1 +1,3 @@
 - finish transformer-based verifier
+- finish implementation of FastSpeech
+	- 
