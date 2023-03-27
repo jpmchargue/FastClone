@@ -18,7 +18,7 @@ class Verifier(nn.Module):
 
         self.preprocess = nn.Linear(input_frame_size, hidden_size).to(device)
         self.transformer = [FeedForwardTransformer(num_heads=2, d_model=hidden_size) for _ in range(self.num_blocks)]
-        self.project = nn.Linear(hidden_size, fingerprint_size)
+        self.project = nn.Linear(hidden_size, fingerprint_size).to(device)
 
         self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(device)
         self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(device)
@@ -29,7 +29,7 @@ class Verifier(nn.Module):
         # batch is initially (num utterances x 160 x 40)
         seq = self.preprocess(batch) # (num utterances x 160 x 256)
         for i in range(self.num_blocks): # (num utterances x 160 x 256)
-            seq = self.transformer[i](seq)
+            seq = self.transformer[i](seq, mask=None)
         finals = seq[:, -1] # (num utterances x 256)
         fingerprint = self.project(finals) # (num utterances x fingerprint size)
 

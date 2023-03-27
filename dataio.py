@@ -20,7 +20,7 @@ class SpeakerDataset(Dataset):
     """
     def __init__(self, path):
         self.speaker_ids = os.listdir(path)
-        self.speakers = [Speaker(id) for id in self.speaker_ids]
+        self.speakers = [Speaker(path, id) for id in self.speaker_ids]
         self.deck = Deck(self.speakers)
 
     def __len__(self):
@@ -65,12 +65,12 @@ class Speaker():
     This object contains methods for gathering and randomly choosing
     batches of utterances from that speaker.
     """
-    def __init__(self, id):    
-        self.npys = self.getNpyReferences(id)
+    def __init__(self, path, id):    
+        self.npys = self.getNpyReferences(path, id)
         self.deck = Deck(self.npys)
 
-    def getNpyReferences(self, id):
-        folder = os.path.join(os.getcwd(), "data/speakers", id)
+    def getNpyReferences(self, path, id):
+        folder = os.path.join(path, id)
         return [os.path.join(folder, npy) for npy in os.listdir(folder)] 
 
     def trimToLength(self, utterance, length):
