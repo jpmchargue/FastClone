@@ -30,13 +30,11 @@ class FFTMultiHeadSelfAttention(nn.Module):
         # I implement Scaled Dot-Product Attention per Attention is All You Need (https://arxiv.org/abs/1706.03762)
         # as softmax((QK^T)/sqrt(d_model))V.
         batch_size, sequence_length, _ = batch.shape
-        print(f"BATCH SHAPE: {batch.shape}")
 
         # Apply initial linear projection. In self-attention, queries, keys, and values are all the same sequence
         queries = self.wq(batch)
         keys = self.wk(batch)
         values = self.wv(batch)
-        print(f"Q SHAPE: {queries.shape}")
 
         # Split the projected vectors among the heads.
         # The first part separates each embedding into num_heads partitions;
@@ -47,7 +45,7 @@ class FFTMultiHeadSelfAttention(nn.Module):
         q = q.permute(2, 0, 1, 3).contiguous().view(-1, sequence_length, self.d_attention)
         k = k.permute(2, 0, 1, 3).contiguous().view(-1, sequence_length, self.d_attention)
         v = v.permute(2, 0, 1, 3).contiguous().view(-1, sequence_length, self.d_attention)
-        print(f"Q SHAPE 2: {q.shape}")
+
 
         # Compute attention
         attention_weights = torch.bmm(q, k.transpose(1, 2)) / np.sqrt(self.d_attention)
@@ -61,7 +59,6 @@ class FFTMultiHeadSelfAttention(nn.Module):
         attention = attention.view(self.num_heads, batch_size, sequence_length, self.d_attention)
         attention = attention.permute(1, 2, 0, 3).contiguous()
         attention = attention.view(batch_size, sequence_length, -1)
-        print(f"FINAL SHAPE: {attention.shape}")
 
         # Post-processing
         residual = self.dropout(self.postlayer(attention))
@@ -88,8 +85,8 @@ class FFTConvolution(nn.Module):
 class FeedForwardTransformer(nn.Module):
     def __init__(self, num_heads=2, d_model=256, conv_d_hidden=1024, kernel_size=9):
         super(FeedForwardTransformer, self).__init__()
-        self.multihead_attention = FFTMultiHeadSelfAttention(num_heads, d_model)
-        self.convolution = FFTConvolution(d_model, conv_d_hidden, kernel_size)
+        self.multihead_attention = FFTMultiHeadSelfAttention(num_heads, d_model).to(device)
+        self.convolution = FFTConvolution(d_model, conv_d_hidden, kernel_size).to(device)
 
     def forward(self, batch, mask):
         if mask is not None:

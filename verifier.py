@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from transformer import FeedForwardTransformer
 
@@ -17,7 +18,7 @@ class Verifier(nn.Module):
         self.fingerprint_size = fingerprint_size
 
         self.preprocess = nn.Linear(input_frame_size, hidden_size).to(device)
-        self.transformer = [FeedForwardTransformer(num_heads=2, d_model=hidden_size) for _ in range(self.num_blocks)]
+        self.transformer = nn.ModuleList([FeedForwardTransformer(num_heads=2, d_model=hidden_size, conv_d_hidden=256) for _ in range(self.num_blocks)])
         self.project = nn.Linear(hidden_size, fingerprint_size).to(device)
 
         self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(device)
@@ -42,11 +43,11 @@ class Verifier(nn.Module):
 
         new_view = batch.view(ns, nu, -1) # (64 x 10 x 256)
         speaker_sums = new_view.sum(dim=1, keepdim=True) # (64 x 1 x 256)
-        centroids = (speaker_sums / nu).squeeze().norm(dim=1).to(device) # (64 x 256)
-        centroids_minus_i = ((speaker_sums - new_view) / (nu - 1)).norm(dim=1).to(device) # (640 x 256)
-        batch = batch.norm(dim=1).to(device)
+        centroids = F.normalize((speaker_sums / nu).squeeze(), dim=1).to(device) # (64 x 256)
+        centroids_minus_i = F.normalize(((speaker_sums - new_view) / (nu - 1)), dim=2).view(ns * nu, -1).to(device) # (640 x 256)
+        batch = F.normalize(batch, dim=1).to(device) # Fun fact: CorentinJ's implementation is incorrect, since it's missing this normalization.
 
-        similarity_matrix = torch.bmm(batch, centroids.t()) # (640 x 64)
+        similarity_matrix = torch.matmul(batch, centroids.t()) # (640 x 64)
         for j in range(ns):
             for i in range(nu):
                 ji = (j * nu) + i
@@ -55,7 +56,7 @@ class Verifier(nn.Module):
         similarity_matrix = (similarity_matrix * self.similarity_weight) + self.similarity_bias
 
         return similarity_matrix
-
+    
     def loss(self, batch):
         ns = self.num_speakers
         nu = self.num_utterances_per_speaker
@@ -87,7 +88,7 @@ class Verifier(nn.Module):
                 embedding = embedding / norm
                 d_vector = d_vector + embedding
             count += 1
-            i += self.window_length / 2
+            i += self.window_length // 2
         d_vector = d_vector.view(-1)
         return d_vector.detach().cpu() / count
 
