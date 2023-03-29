@@ -38,6 +38,7 @@ class Encoder(nn.Module):
         
         return seq
 
+
 class Decoder(nn.Module):
     def __init__(self, d_model, num_blocks=3):
         super(Decoder, self).__init__()
@@ -59,20 +60,71 @@ class Decoder(nn.Module):
 
         
 class VarianceAdaptor(nn.Module):
-    def __init__(self):
+    def __init__(self, d_model, num_bins=256):
         super(VarianceAdaptor, self).__init__()
+        self.pitch_predictor = VariancePredictor()
+        self.energy_predictor = VariancePredictor()
+        self.duration_predictor = VariancePredictor()
+
+        # get statistics on minimum and maximum pitch/energy
+        # values based on VCTK
+        pitch_min, pitch_max = -3, 12
+        energy_min, energy_max = -2, 9
+
+        self.pitch_bins = torch.linspace(pitch_min, pitch_max, num_bins - 1)
+        self.energy_bins = torch.linspace(energy_min, energy_max, num_bins - 1)
+
+        self.pitch_embedding = nn.Embedding(num_bins, d_model)
+        self.energy_embedding = nn.Embedding(num_bins, d_model)
+
+    def length_regulator(self, batch, durations, max_mel_length):
         pass
 
-    def forward(self, batch):
-        pass
+    def forward(self, batch, input_mask, max_mel_length, ground_truth=None):
+        # ground_truth should be of the form (pitch truth, energy truth, duration truth)
+        
+        # In this implementation, pitch and energy prediction are done at the phoneme level
+        # and therefore before length regulation.
+        pitch_predictions = self.pitch_predictor(batch, input_mask)
+        pitch_embeddings = self.pitch_embedding(pitch_predictions) if ground_truth is None \
+                else self.pitch_embedding(ground_truth[0])
+
+        energy_predictions = self.energy_predictor(batch, input_mask)
+        energy_embeddings = self.energy_embedding(energy_predictions) if ground_truth is None \
+                else self.energy_embedding(ground_truth[1])
+
+        batch = batch + pitch_embeddings + energy_embeddings
+
+        raw_duration_predictions = self.duration_predictor(batch, input_mask)
+        duration_predictions = torch.clamp(torch.round(torch.exp(raw_duration_predictions) - 1), min=0)
+        output, output_masks = self.length_regulator(batch, duration_predictions) if ground_truth is None \
+                else self.length_regulator(ground_truth[2])
+
+        return (
+            output, 
+            pitch_predictions, 
+            energy_predictions, 
+            raw_duration_predictions, 
+            output_masks
+        )
 
 
 class VariancePredictor(nn.Module):
-    def __init__(self):
+    def __init__(self, d_model, d_hidden=256, dropout=0.5):
         super(VarianceAdaptor, self).__init__()
         self.layers = nn.Sequential(
-            
+            nn.Conv1d(d_model, d_hidden, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.LayerNorm(d_hidden),
+            nn.Dropout(dropout),
+            nn.Conv1d(d_hidden, d_hidden, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.LayerNorm(d_hidden),
+            nn.Dropout(dropout),
+            nn.Linear(d_hidden, 1),
         )
 
-    def forward(self, batch):
-        pass
+    def forward(self, batch, mask):
+        output = self.layers(batch)
+        output = output.masked_fill(mask, 0.0)
+        return output
