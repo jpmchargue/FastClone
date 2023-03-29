@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from transformer import FeedForwardTransformer
+import parameters as Parameters
 
 def positional_encoding_table(k, num_dimensions):
     i = torch.arange(num_dimensions // 2)
@@ -25,22 +26,53 @@ class Encoder(nn.Module):
         self.transformer = nn.ModuleList(
             [FeedForwardTransformer(num_heads=2, d_model=d_model) for _ in range(num_blocks)]
         )
+        self.positional_encoding = positional_encoding_table(Parameters.MAX_SEQUENCE_LENGTH + 1, d_model)
 
-    def forward(self, batch):
-        pass
+    def forward(self, batch, mask):
+        positional_encoding = self.positional_encoding[:batch.shape[1], :].expand(batch.shape[0], -1, -1)
+
+        seq = self.phoneme_embedding(batch)
+        seq = seq + positional_encoding
+        for fft in self.transformer:
+            seq = fft(seq, mask)
+        
+        return seq
 
 class Decoder(nn.Module):
-    def __init__(self):
+    def __init__(self, d_model, num_blocks=3):
         super(Decoder, self).__init__()
-        pass
 
-    def forward(self, batch):
-        pass
+        self.transformer = nn.ModuleList(
+            [FeedForwardTransformer(num_heads=2, d_model=d_model) for _ in range(num_blocks)]
+        )
+        self.positional_encoding = positional_encoding_table(Parameters.MAX_SEQUENCE_LENGTH, d_model)
 
+    def forward(self, batch, mask):
+        seq_length = min(batch.shape[1], Parameters.MAX_SEQUENCE_LENGTH)
+        positional_encoding = self.positional_encoding[:seq_length, :].expand(batch.shape[0], -1, -1)
+
+        seq = batch + positional_encoding
+        for fft in self.transformer:
+            seq = fft(seq, mask)
+        
+        return seq
+
+        
 class VarianceAdaptor(nn.Module):
     def __init__(self):
         super(VarianceAdaptor, self).__init__()
         pass
+
+    def forward(self, batch):
+        pass
+
+
+class VariancePredictor(nn.Module):
+    def __init__(self):
+        super(VarianceAdaptor, self).__init__()
+        self.layers = nn.Sequential(
+            
+        )
 
     def forward(self, batch):
         pass

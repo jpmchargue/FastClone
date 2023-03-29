@@ -39,6 +39,8 @@ for speaker in speakers:
 
 print("Embedding...")
 all_embeddings = torch.stack([verifier.get_embedding(spectrogram) for spectrogram in all_spectrograms])
+plt.imshow(all_embeddings)
+plt.show()
 
 for embedding in all_embeddings:
     print(all_embeddings)
@@ -57,5 +59,5 @@ plt.scatter(
     c=labels)
 plt.legend(handles=mp)
 plt.gca().set_aspect('equal', 'datalim')
-plt.title('UMAP Projection of Speaker Embeddings (20000)')
+plt.title('UMAP Projection of Speaker Embeddings (7500)')
 plt.show()

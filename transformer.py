@@ -21,7 +21,7 @@ class FFTMultiHeadSelfAttention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
 
         self.postlayer = nn.Linear(d_model, d_model).to(device)
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.2)
         self.layernorm = nn.LayerNorm(d_model)
 
     def forward(self, batch, mask=None):
@@ -71,7 +71,7 @@ class FFTConvolution(nn.Module):
         self.layer1 = nn.Conv1d(d_model, d_hidden, kernel_size=kernel_size, padding=(kernel_size - 1) // 2).to(device)
         self.layer2 = nn.Conv1d(d_hidden, d_model, kernel_size=1, padding=0).to(device)
 
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.2)
         self.layernorm = nn.LayerNorm(d_model)
 
     def forward(self, batch):

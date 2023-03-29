@@ -5,6 +5,8 @@ import torch.nn.functional as F
 
 from transformer import FeedForwardTransformer
 
+import matplotlib.pyplot as plt
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -31,7 +33,8 @@ class Verifier(nn.Module):
         seq = self.preprocess(batch) # (num utterances x 160 x 256)
         for i in range(self.num_blocks): # (num utterances x 160 x 256)
             seq = self.transformer[i](seq, mask=None)
-        finals = seq[:, -1] # (num utterances x 256)
+        #finals = seq[:, -1] # (num utterances x 256)
+        finals = torch.mean(seq, 1)
         fingerprint = self.project(finals) # (num utterances x fingerprint size)
 
         return fingerprint
@@ -62,6 +65,10 @@ class Verifier(nn.Module):
         nu = self.num_utterances_per_speaker
 
         similarity_matrix = self.get_similarity_matrix(batch)
+        #similarity_matrix_clone = similarity_matrix.clone().cpu().detach()
+        #plt.imshow(similarity_matrix_clone)
+        #plt.show()
+
         target = torch.arange(ns).repeat_interleave(nu).to(device)
         loss = self.loss_function(similarity_matrix, target)
 
