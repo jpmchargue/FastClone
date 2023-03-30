@@ -89,7 +89,7 @@ def load_state(network, optimizer, filename):
 verifier = Verifier()
 optimizer = ScheduledOptimizer(verifier, 0, 0.01, warmup_duration=250)
 
-#load_state(verifier, optimizer, "transformer_verifier7500.pth.tar")
+load_state(verifier, optimizer, "transformer_verifier_mean5000.pth.tar")
 
 train_gel(verifier, optimizer, 5000)
-save_state(verifier, optimizer, "transformer_verifier_mean5000.pth.tar")
+save_state(verifier, optimizer, "transformer_verifier_mean10000.pth.tar")
