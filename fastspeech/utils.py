@@ -36,7 +36,7 @@ def blockify3D(matrices):
     new_matrices = np.array([np.pad(m, (0, 0, 0, max_matrix_length - m.shape[0])) for m in matrices])
     return torch.from_numpy(new_matrices)
 
-def get_vocoder():
+def prepare_vocoder():
     """
     Get a pretrained HiFiGAN vocoder.
     """

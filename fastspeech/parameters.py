@@ -8,4 +8,10 @@ OUTPUT_MEL_CHANNELS = 80
 POSTNET_DIMENSIONS = 512
 POSTNET_BLOCKS = 6
 
+# Training
 BASE_LEARNING_RATE = 1/16
+DATASET_PATH = "C:/Users/James/Desktop/'FastSpeech2 original'/preprocessed_data/LJSpeech"
+BATCH_SIZE = 16
+
+# Synthesis
+OUTPUT_SAMPLE_RATE = 22050

@@ -84,16 +84,19 @@ class VarianceAdaptor(nn.Module):
     def length_regulator(self, batch, durations, true_max_mel_length=None):
         # batch and durations should have the same length in dimensions 0 and 1
         expanded = []
+        masks = []
         for sequence, new_lengths in zip(batch, durations):
             new_sequence = sequence.repeat_interleave(new_lengths, dim=0)
+            new_mask = torch.arange(true_max_mel_length) < torch.sum(new_lengths)
             expanded.append(new_sequence)
+            masks.append(new_mask)
 
         pad_lengths_to = max([e.shape[0] for e in expanded]) if true_max_mel_length is None else true_max_mel_length
         padded = []
         for new_sequence in expanded:
             padded.append(F.pad(new_sequence, (0, 0, 0, pad_lengths_to - new_sequence.shape[0])))
         
-        return torch.stack(padded)
+        return torch.stack(padded), torch.stack(masks)
 
     def forward(self, batch, input_mask, ground_truth=None):
         # ground_truth should be of the form (pitch truth, energy truth, duration truth)
@@ -217,6 +220,39 @@ class FastSpeech(nn.Module):
 
         return (final, seq, pitch_prediction, energy_prediction, duration_prediction, input_masks, output_masks)
 
-    def loss(self):
-        pass
+    def loss(self, mel_truths, ground_truths, predictions):
+        (
+            pitch_truths, 
+            energy_truths, 
+            duration_truths
+        ) = ground_truths
+        (
+            postnet_predictions, 
+            prenet_predictions, 
+            pitch_predictions,
+            energy_predictions,
+            duration_predictions,
+            input_masks,
+            output_masks
+        ) = predictions
+
+        pitch_predictions = pitch_predictions.masked_select(input_masks)
+        energy_predictions = energy_predictions.masked_select(input_masks)
+        duration_predictions = duration_predictions.masked_select(input_masks)
+        pitch_loss = self.variance_predictor_loss(pitch_predictions, pitch_truths)
+        energy_loss = self.variance_predictor_loss(energy_predictions, energy_truths)
+        duration_loss = self.variance_predictor_loss(duration_predictions, duration_truths)
+
+        postnet_predictions = postnet_predictions.masked_select(output_masks.unsqueeze(-1))
+        prenet_predictions = prenet_predictions.masked_select(output_masks.unsqueeze(-1))
+        postnet_loss = self.mel_loss(postnet_predictions, mel_truths)
+        prenet_loss = self.mel_loss(prenet_predictions, mel_truths)
+
+        total_loss = pitch_loss + energy_loss + duration_loss + postnet_loss + prenet_loss
+
+        return (total_loss, pitch_loss, energy_loss, duration_loss, postnet_loss, prenet_loss)
+
+
+
+
 
