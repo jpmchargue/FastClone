@@ -25,7 +25,6 @@ class ScheduledOptimizer:
         self._optimizer.step()
 
     def zero_grad(self):
-        # print(self.init_lr)
         self._optimizer.zero_grad()
 
     def load_state_dict(self, path):

@@ -3,6 +3,7 @@ import os
 from torch.utils.data import Dataset, DataLoader
 import random
 
+import cleantext
 
 NUM_BATCH_SPEAKERS = 64
 NUM_BATCH_UTTERANCES = 10
@@ -132,3 +133,74 @@ class Deck():
             dealt.extend(self.undealt[:n])
             self.undealt = self.undealt[n:]
         return dealt
+
+
+class FastSpeechDataset(Dataset):
+    """
+    A dataset for getting training batches for FastSpeech.
+    """
+    def __init__(self, dataset_path):
+        self.dataset_path = dataset_path
+        self.names, self.speakers, self.text, self.raw_text = self.gather_all_utterances(dataset_path)
+
+    def gather_all_utterances(self, filename):
+        with open(
+            os.path.join(self.preprocessed_path, filename), "r", encoding="utf-8"
+        ) as f:
+            name, speaker, text, raw_text = [], [], [], []
+            for line in f.readlines():
+                n, s, t, r = line.strip("\n").split("|")
+                name.append(n)
+                speaker.append(s)
+                text.append(t)
+                raw_text.append(r)
+            return name, speaker, text, raw_text
+
+    def __len__(self):
+        return len(self.text)
+
+    def __getitem__(self, index):
+        basename = self.names[index]
+        speaker = self.speakers[index]
+        phonemes = np.array(cleantext.text_to_sequence(self.text[index], ["english_cleaners"]))
+        mel_path = os.path.join(
+            self.dataset_path,
+            "mel",
+            "{}-mel-{}.npy".format(speaker, basename),
+        )
+        mel = np.load(mel_path)
+        pitch_path = os.path.join(
+            self.dataset_path,
+            "pitch",
+            "{}-pitch-{}.npy".format(speaker, basename),
+        )
+        pitch_truth = np.load(pitch_path)
+        energy_path = os.path.join(
+            self.dataset_path,
+            "energy",
+            "{}-energy-{}.npy".format(speaker, basename),
+        )
+        energy_truth = np.load(energy_path)
+        duration_path = os.path.join(
+            self.dataset_path,
+            "duration",
+            "{}-duration-{}.npy".format(speaker, basename),
+        )
+        duration_truth = np.load(duration_path)
+        #fingerprint_path = os.path.join(
+        #    self.preprocessed_path,
+        #    "fingerprint",
+        #    "{}-fingerprint.npy".format(speaker),
+        #)
+        #fingerprint = np.load(fingerprint_path)
+
+        return (
+            basename,
+            phonemes,
+            mel,
+            (
+                pitch_truth,
+                energy_truth,
+                duration_truth,
+            ),
+        )
