@@ -139,13 +139,13 @@ class FastSpeechDataset(Dataset):
     """
     A dataset for getting training batches for FastSpeech.
     """
-    def __init__(self, dataset_path):
+    def __init__(self, dataset_path, training_txt):
         self.dataset_path = dataset_path
-        self.names, self.speakers, self.text, self.raw_text = self.gather_all_utterances(dataset_path)
+        self.names, self.speakers, self.text, self.raw_text = self.gather_all_utterances(training_txt)
 
     def gather_all_utterances(self, filename):
         with open(
-            os.path.join(self.preprocessed_path, filename), "r", encoding="utf-8"
+            os.path.join(self.dataset_path, filename), "r", encoding="utf-8"
         ) as f:
             name, speaker, text, raw_text = [], [], [], []
             for line in f.readlines():
@@ -198,9 +198,10 @@ class FastSpeechDataset(Dataset):
             basename,
             phonemes,
             mel,
-            (
-                pitch_truth,
-                energy_truth,
-                duration_truth,
-            ),
+            pitch_truth,
+            energy_truth,
+            duration_truth,
         )
+    
+    def collate_fn(self, data):
+        return data

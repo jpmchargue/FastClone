@@ -9,8 +9,8 @@ POSTNET_DIMENSIONS = 512
 POSTNET_BLOCKS = 6
 
 # Training
+DATASET_PATH = "data/LJSpeech"
 BASE_LEARNING_RATE = 1/16
-DATASET_PATH = "C:/Users/James/Desktop/'FastSpeech2 original'/preprocessed_data/LJSpeech"
 BATCH_SIZE = 16
 
 # Synthesis

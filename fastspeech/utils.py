@@ -45,7 +45,7 @@ def prepare_vocoder():
     config = hifigan.AttrDict(config)
     vocoder = hifigan.Generator(config)
     ckpt = torch.load("hifigan/generator_LJSpeech.pth.tar")
-    ckpt = torch.load("hifigan/generator_universal.pth.tar")
+    #ckpt = torch.load("hifigan/generator_universal.pth.tar")
     vocoder.load_state_dict(ckpt["generator"])
     vocoder.eval()
     vocoder.remove_weight_norm()

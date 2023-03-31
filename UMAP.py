@@ -22,7 +22,7 @@ DATA_PATH = "C:/Users/James/Desktop/toyprojects/prosody/data/speakers"
 verifier = Verifier()
 if LOAD_MODEL:
     print("Loading model...")
-    checkpoint_name = "transformer_verifier_mean10000.pt"
+    checkpoint_name = "transformer_verifier_mean15000.pt"
     if os.path.exists(os.path.join(cwd, checkpoint_name)):
         verifier.load_state_dict(torch.load(checkpoint_name))
 
@@ -59,5 +59,5 @@ plt.scatter(
     c=labels)
 plt.legend(handles=mp)
 plt.gca().set_aspect('equal', 'datalim')
-plt.title('UMAP Projection of Speaker Embeddings (Mean, 10000)')
+plt.title('UMAP Projection of Speaker Embeddings (Mean, 15000)')
 plt.show()

@@ -2,7 +2,7 @@ from g2p_en import G2p
 import numpy as np
 from string import punctuation
 import re
-import parameters as Parameters
+import fastspeech.parameters as Parameters
 
 def read_lexicon(lex_path):
     lexicon = {}

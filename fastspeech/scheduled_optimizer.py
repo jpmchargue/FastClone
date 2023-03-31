@@ -7,11 +7,11 @@ class ScheduledOptimizer:
 
     def __init__(self, model, current_step, base_lr, warmup_duration=4000, anneal_steps=[], anneal_rate=0.3):
 
-        self._optimizer = torch.optim.SGD(
+        self._optimizer = torch.optim.Adam(
             model.parameters(),
             lr=base_lr,
-            #betas=[0.9, 0.98],
-            #eps=10e-9,
+            betas=[0.9, 0.98],
+            eps=10e-9,
             weight_decay=0.0,
         )
         self.n_warmup_steps = warmup_duration
