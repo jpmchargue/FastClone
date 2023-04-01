@@ -252,23 +252,24 @@ class FastSpeech(nn.Module):
             output_masks
         ) = predictions
 
-        torch.set_printoptions(threshold=10_000)
-
-
-
         pitch_predictions = pitch_predictions.masked_select(~input_masks)
         energy_predictions = energy_predictions.masked_select(~input_masks)
         duration_predictions = duration_predictions.masked_select(~input_masks)
         pitch_truths = torch.from_numpy(np.concatenate(pitch_truths)).float().to(device)
         energy_truths = torch.from_numpy(np.concatenate(energy_truths)).float().to(device)
         duration_truths = torch.from_numpy(np.log(np.concatenate(duration_truths)) + 1).float().to(device)
-        pitch_loss = self.variance_predictor_loss(pitch_predictions, pitch_truths)
-        energy_loss = self.variance_predictor_loss(energy_predictions, energy_truths)
-        duration_loss = self.variance_predictor_loss(duration_predictions, duration_truths)
+        pitch_truths.requires_grad = False
+        energy_truths.requires_grad = False 
+        duration_truths.requires_grad = False
 
         postnet_predictions = postnet_predictions.masked_select(output_masks.unsqueeze(-1))
         prenet_predictions = prenet_predictions.masked_select(output_masks.unsqueeze(-1))
         mel_truths = torch.from_numpy(np.concatenate([m.flatten() for m in mel_truths])).to(device)
+        mel_truths.requires_grad = False
+
+        pitch_loss = self.variance_predictor_loss(pitch_predictions, pitch_truths)
+        energy_loss = self.variance_predictor_loss(energy_predictions, energy_truths)
+        duration_loss = self.variance_predictor_loss(duration_predictions, duration_truths)
         postnet_loss = self.mel_loss(postnet_predictions, mel_truths)
         prenet_loss = self.mel_loss(prenet_predictions, mel_truths)
 

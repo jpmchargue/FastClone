@@ -83,9 +83,9 @@ def train_fastspeech(num_steps, load_step=None):
 def synthesize_example(iteration, batch, output, vocoder):
     name = batch[0][0]
     mel_truth = torch.tensor(batch[0][2]).detach().transpose(0, 1).to(device)
-    raw_duration_prediction = output[4][0]
-    length_prediction = int(torch.sum(torch.clamp(torch.round(torch.exp(raw_duration_prediction) - 1), min=0)).item())
-    mel_prediction = output[0][0][:length_prediction].detach().transpose(0, 1).to(device)
+    raw_duration_truth = output[0][5]
+    length_truth = int(torch.sum(torch.clamp(torch.round(torch.exp(raw_duration_truth) - 1), min=0)).item())
+    mel_prediction = output[0][0][:length_truth].detach().transpose(0, 1).to(device)
 
     with torch.no_grad():
         wav_reconstruction = vocoder(mel_truth.unsqueeze(0)).squeeze()
@@ -99,8 +99,8 @@ def synthesize_example(iteration, batch, output, vocoder):
 
 def create_checkpoint(iteration, model, optimizer):
     torch.save({
-        "model": model.module.state_dict(),
+        "model": model.state_dict(),
         "optimizer": optimizer._optimizer.state_dict(),
-    }, f"results/checkpoint/checkpoint{iteration}.pth.tar")
+    }, f"results/checkpoints/checkpoint{iteration}.pth.tar")
 
-train_fastspeech(100000)
+train_fastspeech(50000)
