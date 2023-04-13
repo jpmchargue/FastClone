@@ -3,7 +3,11 @@ import numpy as np
 
 
 class ScheduledOptimizer:
-    """ A simple wrapper class for learning rate scheduling """
+    """ 
+    A simple wrapper class for learning rate scheduling.
+    This class was borrowed from Ming024's FastSpeech 2 implementation
+    (https://github.com/ming024/FastSpeech2). 
+    """
 
     def __init__(self, model, current_step, base_lr, warmup_duration=4000, anneal_steps=[300000, 400000], anneal_rate=0.3):
 
