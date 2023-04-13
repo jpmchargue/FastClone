@@ -5,7 +5,7 @@ import numpy as np
 class ScheduledOptimizer:
     """ A simple wrapper class for learning rate scheduling """
 
-    def __init__(self, model, current_step, base_lr, warmup_duration=4000, anneal_steps=[], anneal_rate=0.3):
+    def __init__(self, model, current_step, base_lr, warmup_duration=4000, anneal_steps=[300000, 400000], anneal_rate=0.3):
 
         self._optimizer = torch.optim.Adam(
             model.parameters(),

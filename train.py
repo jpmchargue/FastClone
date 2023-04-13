@@ -11,11 +11,14 @@ from fastspeech.scheduled_optimizer import ScheduledOptimizer
 from fastspeech.datasets import FastSpeechDataset
 from fastspeech.utils import prepare_vocoder
 
+from synthesize import synthesize_new
+
+import numpy as np
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def step_fastspeech(batch, model, optimizer):
-    #basenames = [i[0] for i in batch] # for logging, maybe
     phonemes = [i[1] for i in batch]
     mel_truth = [i[2] for i in batch]
     pitch_truth = [i[3] for i in batch]
@@ -34,10 +37,11 @@ def step_fastspeech(batch, model, optimizer):
     return predictions, loss
 
 def train_fastspeech(num_steps, load_step=None):
+    iteration = load_step + 1 if load_step is not None else 1
     model = FastSpeech()
-    optimizer = ScheduledOptimizer(model, 0, Parameters.BASE_LEARNING_RATE)
+    optimizer = ScheduledOptimizer(model, iteration, Parameters.BASE_LEARNING_RATE)
     vocoder = prepare_vocoder()
-
+    
     if load_step is not None:
         checkpoint = torch.load(f"results/checkpoints/checkpoint{load_step}.pth.tar")
         model.load_state_dict(checkpoint["model"])
@@ -46,10 +50,10 @@ def train_fastspeech(num_steps, load_step=None):
     dataset = FastSpeechDataset(Parameters.DATASET_PATH, "train.txt")
     dataloader = DataLoader(dataset, batch_size=Parameters.BATCH_SIZE, shuffle=True, collate_fn=dataset.collate_fn)
 
-    iteration = 1
     progress_bar = tqdm(total=num_steps)
     synthesize_every = 1000
-    save_every = 10000
+    save_every = 5000
+    import matplotlib.pyplot as plt
     while True:
         for batch in dataloader:
             predictions, loss = step_fastspeech(batch, model, optimizer)
@@ -62,15 +66,21 @@ def train_fastspeech(num_steps, load_step=None):
                 prenet_loss,
             ) = loss
 
-            tqdm.write(f"Step {iteration} - Total Loss: {round(total_loss.item(), 3)}, "
+            loss_text = (f"Step {iteration} - Total Loss: {round(total_loss.item(), 3)}, "
                        f"Mel: {round(postnet_loss.item(), 3)}, "
                        f"Pitch: {round(pitch_loss.item(), 3)}, "
                        f"Energy: {round(energy_loss.item(), 3)}, "
-                       f"Duration: {round(duration_loss.item(), 3)}"
-            )
+                       f"Duration: {round(duration_loss.item(), 3)}")
+
+            tqdm.write(loss_text)
             
             if iteration % synthesize_every == 0:
                 synthesize_example(iteration, batch, predictions, vocoder)
+                synthesize_new("At Case Western, we think beyond the possible.", model, vocoder, save_as="case_" + str(iteration))
+                synthesize_new("Turn right, and the destination will be on your left.", model, vocoder, save_as="directions_" + str(iteration))
+
+                with open('results/loss.txt', 'a') as log:
+                    log.write(loss_text + "\n")
 
             if iteration % save_every == 0:
                 create_checkpoint(iteration, model, optimizer)
@@ -83,8 +93,8 @@ def train_fastspeech(num_steps, load_step=None):
 def synthesize_example(iteration, batch, output, vocoder):
     name = batch[0][0]
     mel_truth = torch.tensor(batch[0][2]).detach().transpose(0, 1).to(device)
-    raw_duration_truth = output[0][5]
-    length_truth = int(torch.sum(torch.clamp(torch.round(torch.exp(raw_duration_truth) - 1), min=0)).item())
+    raw_duration_truth = batch[0][5]
+    length_truth = int(sum(raw_duration_truth))
     mel_prediction = output[0][0][:length_truth].detach().transpose(0, 1).to(device)
 
     with torch.no_grad():
@@ -98,9 +108,12 @@ def synthesize_example(iteration, batch, output, vocoder):
     wavfile.write("results/examples/" + str(iteration) + "_" + name + "_prediction.wav", Parameters.OUTPUT_SAMPLE_RATE, wav_prediction)
 
 def create_checkpoint(iteration, model, optimizer):
+    model_dict = model.state_dict()
+    optimizer_dict = optimizer._optimizer.state_dict()
     torch.save({
-        "model": model.state_dict(),
-        "optimizer": optimizer._optimizer.state_dict(),
+        "model": model_dict,
+        "optimizer": optimizer_dict,
     }, f"results/checkpoints/checkpoint{iteration}.pth.tar")
 
+print(f"Using device {device}")
 train_fastspeech(50000)
